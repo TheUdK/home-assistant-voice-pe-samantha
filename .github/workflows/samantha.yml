@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: samantha-${{ github.ref }}
@@ -30,21 +31,37 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           fetch-depth: 0
+      - name: Reuse validated exact-commit build for publication
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/samantha.yml/runs" -f head_sha="$GITHUB_SHA" -f event=push -f status=success --jq '.workflow_runs[0].id // empty')
+          test -n "$run_id" || { echo 'A successful push build for this exact commit is required.' >&2; exit 1; }
+          gh run download "$run_id" --name samantha-firmware --dir dist
+          gh run download "$run_id" --name samantha-site --dir site
+          (cd dist && sha256sum --check SHA256SUMS)
+          printf 'Validated source run: %s/actions/runs/%s\n' "https://github.com/$GITHUB_REPOSITORY" "$run_id" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        if: github.event_name != 'workflow_dispatch' || !inputs.publish
         with:
           python-version: '3.12'
       - name: Install pinned ESPHome
+        if: github.event_name != 'workflow_dispatch' || !inputs.publish
         run: |
           version=$(python -c 'import json; print(json.load(open("samantha-lock.json"))["esphome_version"])')
           python -m pip install "esphome==$version"
       - name: Verify provenance and configuration
+        if: github.event_name != 'workflow_dispatch' || !inputs.publish
         run: |
           python samantha_tools.py verify
           esphome config samantha.yaml > validated-config.yaml
           python samantha_tools.py config
       - name: Compile firmware
+        if: github.event_name != 'workflow_dispatch' || !inputs.publish
         run: esphome compile samantha.yaml
       - name: Verify model inclusion and package
+        if: github.event_name != 'workflow_dispatch' || !inputs.publish
         run: |
           python samantha_tools.py package
           cp validated-config.yaml dist/
