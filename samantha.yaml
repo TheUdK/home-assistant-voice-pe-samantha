@@ -1,0 +1,47 @@
+# Minimal additive overlay; the official runtime and factory files stay unchanged.
+substitutions:
+  firmware_version: "26.9.0-samantha.1"
+  ota_base: https://theudk.github.io/home-assistant-voice-pe-samantha
+
+packages:
+  official: !include home-assistant-voice.factory.yaml
+
+esphome:
+  project:
+    name: TheUdK.Voice PE Samantha
+    version: ${firmware_version}
+
+# Use the exact official component shipped in our pinned upstream checkout.
+external_components:
+  source:
+    type: local
+    path: esphome/components
+  components: [voice_kit]
+
+micro_wake_word:
+  models:
+    - model: samantha.esphome.json
+      id: samantha
+  # Add hey_samantha here only after its model is vendored and verified.
+  # Both phrases remain independently selectable; keep the upstream models.
+
+update:
+  - id: !extend update_http_request
+    source: ${ota_base}/manifest.json
+
+dashboard_import:
+  package_import_url: github://TheUdK/home-assistant-voice-pe-samantha/samantha.yaml@samantha
+
+# Keep the existing beta switch, but direct both channels to our own firmware.
+switch:
+  - id: !extend beta_firmware
+    on_turn_on:
+      then:
+        - logger.log: "OTA updates set to use Samantha beta firmware"
+        - lambda: id(update_http_request).set_source_url("${ota_base}/manifest-beta.json");
+        - component.update: update_http_request
+    on_turn_off:
+      then:
+        - logger.log: "OTA updates set to use Samantha firmware"
+        - lambda: id(update_http_request).set_source_url("${ota_base}/manifest.json");
+        - component.update: update_http_request

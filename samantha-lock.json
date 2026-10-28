@@ -1,0 +1,28 @@
+{
+  "upstream_repository": "esphome/home-assistant-voice-pe",
+  "upstream_tag": "26.9.0",
+  "upstream_commit": "2644f4c794271d735d182ca7ebf899ed46164f4e",
+  "esphome_version": "2026.10.1",
+  "firmware_version": "26.9.0-samantha.1",
+  "models": [
+    {
+      "id": "samantha",
+      "wake_word": "samantha",
+      "manifest": "samantha.esphome.json",
+      "model": "samantha.tflite",
+      "source_repository": "TaterTotterson/Tater-Wake-Words",
+      "source_commit": "a901f6236a5489e54883b5b5f2335c0c0f2e3c24",
+      "source_manifest": "microWakeWordsV3/samantha.json",
+      "source_model": "microWakeWordsV3/samantha.tflite",
+      "license": "MIT",
+      "license_file": "SAMANTHA-MODEL-LICENSE",
+      "manifest_sha256": "9ff0a6b763f9c6bc252ce131b72dda5b137492bc2edffa3fdcc4b0ecc0f93dbb",
+      "model_sha256": "0829465b4cca6676f8eceecc54643c16de6626af32242f10ed5dbbeeb90452d4"
+    }
+  ],
+  "pending_model": {
+    "id": "hey_samantha",
+    "issue": "https://github.com/TaterTotterson/Tater-Wake-Words/issues/314",
+    "status": "awaiting-training"
+  }
+}
