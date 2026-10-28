@@ -1,0 +1,135 @@
+name: Samantha firmware
+
+on:
+  push:
+    branches: [samantha]
+  pull_request:
+    branches: [samantha]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish validated firmware
+        type: boolean
+        default: false
+  schedule:
+    - cron: '23 5 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: samantha-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version: '3.12'
+      - name: Install pinned ESPHome
+        run: |
+          version=$(python -c 'import json; print(json.load(open("samantha-lock.json"))["esphome_version"])')
+          python -m pip install "esphome==$version"
+      - name: Verify provenance and configuration
+        run: |
+          python samantha_tools.py verify
+          esphome config samantha.yaml > validated-config.yaml
+          python samantha_tools.py config
+      - name: Compile firmware
+        run: esphome compile samantha.yaml
+      - name: Verify model inclusion and package
+        run: |
+          python samantha_tools.py package
+          cp validated-config.yaml dist/
+      - name: Preserve validated build
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: samantha-firmware
+          path: dist/
+          retention-days: 30
+      - name: Preserve OTA site
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: samantha-site
+          path: site/
+          retention-days: 30
+      - name: Build summary
+        run: |
+          printf '%s\n' 'Configuration, model integrity, upstream preservation, model inclusion and compilation passed.' 'Device accuracy and false positives require physical testing. No device was contacted.' >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/samantha'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: samantha-firmware
+          path: dist
+      - id: version
+        run: |
+          version=$(python -c 'import json; print(json.load(open("samantha-lock.json"))["firmware_version"])')
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+      - name: Publish immutable-version candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Existing tags/releases are never overwritten.
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo 'Version already released; bump firmware_version before publishing.' >&2
+            exit 1
+          fi
+          gh release create "$VERSION" dist/* --target "$GITHUB_SHA" --prerelease --title "$VERSION" --notes-file SAMANTHA.md
+
+  pages:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/samantha'
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: samantha-site
+          path: site
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
+
+  upstream:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: samantha
+          fetch-depth: 0
+      - name: Propose latest official stable baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python samantha_upstream.py
