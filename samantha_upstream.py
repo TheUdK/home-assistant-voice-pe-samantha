@@ -44,4 +44,6 @@ git('add','samantha-lock.json','samantha.yaml')
 git('commit','-m',f'Track official stable firmware {tag}')
 git('push','origin',f'HEAD:refs/heads/{branch}')
 Path('/tmp/samantha-upstream-pr.md').write_text(f'Update official runtime assets to [{tag}]({release["html_url"]}), commit `{commit}`. Keep Samantha overlay and vendored models.\n\nRun Samantha firmware on this branch and verify all checks before merging. Token-created PRs may require manually dispatching the workflow for this branch. No automatic release or device installation.\n')
-subprocess.run(['gh','pr','create','--base','samantha','--head',branch,'--title',f'Track official stable firmware {tag}','--body-file','/tmp/samantha-upstream-pr.md'],check=True)
+result = subprocess.run(['gh','pr','create','--base','samantha','--head',branch,'--title',f'Track official stable firmware {tag}','--body-file','/tmp/samantha-upstream-pr.md'])
+if result.returncode:
+    print(f'Update branch pushed: {branch}. Repository policy prevented PR creation; open a PR from this branch manually. No merge or release performed.')

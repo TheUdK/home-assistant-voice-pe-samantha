@@ -6,7 +6,7 @@ This public fork tracks official stable firmware. `samantha.yaml` is the additiv
 
 1. Vendor and verify the existing English **samantha** microWakeWord model.
 2. Build the additive overlay with ESPHome 2026.10.1 for official 16 MB ESP32-S3 Voice PE hardware; retain Okay Nabu, Hey Jarvis, Hey Mycroft, Stop, VAD, microphone settings, factory provisioning, timers, mute controls and upstream sensitivity behavior.
-3. Validate merged configuration, compare official runtime files against the baseline commit, and verify custom TFLite bytes in generated sources before compiling and packaging.
+3. Validate merged configuration, compare official runtime files against the baseline commit, and verify custom TFLite bytes in generated sources and the compiled OTA binary before packaging.
 4. Publish versioned experimental firmware only after successful GitHub Actions compilation. Serve OTA binaries and manifests from GitHub Pages. Updates require manual approval in Home Assistant; no automatic device installation, HACS or Wyoming server.
 5. Keep checking [Hey Samantha request #314](https://github.com/TaterTotterson/Tater-Wake-Words/issues/314). Add it alongside Samantha after verifying its artifacts and license. Do not replace Samantha or any official model.
 6. Test real detection and false positives on the physical device before treating the release as production ready.
@@ -29,7 +29,7 @@ esphome compile samantha.yaml
 python samantha_tools.py package
 ```
 
-The **Samantha firmware** GitHub Actions workflow builds on pushes and pull requests. Its manual **Publish validated firmware** option creates a versioned prerelease and deploys the Pages site only after all checks and compilation pass. It never contacts or installs on a device. Bump `firmware_version` in both the lock and substitution before a new release; release tags must remain immutable. The daily upstream job proposes a new stable baseline as a pull request, without auto-merging or installing it. Review and build that PR before merging; then dispatch a validated release.
+The **Samantha firmware** GitHub Actions workflow builds on pushes and pull requests. Its manual **Publish validated firmware** option creates a versioned prerelease and deploys the Pages site only after all checks and compilation pass. It never contacts or installs on a device. Bump `firmware_version` in both the lock and substitution before a new release; release tags must remain immutable. The daily upstream job pushes a new stable baseline to an update branch and proposes a pull request when repository policy permits it, without auto-merging or installing it. If automated PR creation is disabled, the workflow summary/log identifies the branch for a manual PR. Review and build that PR before merging; then dispatch a validated release.
 
 Pages publishes `manifest.json` and `manifest-beta.json` and versioned OTA binaries. The existing Beta firmware switch remains available, with both channels directed to this fork. Until separate beta promotion is needed, both manifests describe the same validated experimental release. The HTTP update entity checks every six hours and only installs on explicit request.
 

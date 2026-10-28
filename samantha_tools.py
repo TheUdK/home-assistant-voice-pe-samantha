@@ -29,6 +29,7 @@ def verify():
             ["git", "show", f'{LOCK["upstream_commit"]}:{name}'], cwd=ROOT)
         assert (ROOT / name).read_bytes() == original, f"Upstream file changed: {name}"
     overlay = (ROOT / "samantha.yaml").read_text()
+    assert json.loads((ROOT / "samantha-lock.json").read_text())["firmware_version"] in overlay
     assert "official: !include home-assistant-voice.factory.yaml" in overlay
     assert "${ota_base}/manifest.json" in overlay
     assert "${ota_base}/manifest-beta.json" in overlay
@@ -93,6 +94,8 @@ def package():
         assert source.is_file() and source.stat().st_size > 0, source
         shutil.copy2(source, out / name)
     ota = (out / "firmware.ota.bin").read_bytes()
+    for model in LOCK["models"]:
+        assert (ROOT / model["model"]).read_bytes() in ota, f"Model absent from compiled OTA binary: {model['id']}"
     manifest = {"name": "Home Assistant Voice PE — Samantha", "version": version,
                 "builds": [{"chipFamily": "ESP32-S3", "ota": {
                     "path": f"releases/{version}/firmware.ota.bin",
