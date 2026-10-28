@@ -21,6 +21,9 @@ if existing:
     raise SystemExit(0)
 git('fetch','https://github.com/esphome/home-assistant-voice-pe.git',f'refs/tags/{tag}')
 commit = git('rev-parse','FETCH_HEAD^{commit}')
+if git('ls-remote','--heads','origin',f'refs/heads/{branch}'):
+    print(f'Existing update branch awaiting review: {branch}')
+    raise SystemExit(0)
 git('checkout','-b',branch)
 old_paths = git('ls-tree','-r','--name-only',lock['upstream_commit']).splitlines()
 new_paths = git('ls-tree','-r','--name-only',commit).splitlines()

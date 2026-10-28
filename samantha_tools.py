@@ -86,7 +86,7 @@ def package():
     generated()
     version = LOCK["firmware_version"]
     repo = os.environ.get("GITHUB_REPOSITORY", "TheUdK/home-assistant-voice-pe-samantha")
-    build = ROOT / ".esphome/build/home-assistant-voice/.pioenvs/home-assistant-voice"
+    build = ROOT / ".esphome/build/home-assistant-voice/build"
     out = ROOT / "dist"
     out.mkdir(exist_ok=True)
     for name in ["firmware.ota.bin", "firmware.factory.bin", "firmware.elf"]:
